@@ -143,7 +143,7 @@ class ProductApiIntegrationTest {
         mockMvc
             .perform(
                 get("/actuator/metrics/cache.gets")
-                    .with(jwt())
+                    .with(admin())
                     .param("tag", "cache:products")
                     .param("tag", "result:hit"))
             .andExpect(status().isOk())
@@ -153,6 +153,17 @@ class ProductApiIntegrationTest {
     Double hits = JsonPath.read(body, "$.measurements[0].value");
 
     assertThat(hits).isGreaterThanOrEqualTo(1.0);
+  }
+
+  @Test
+  void plainUserCannotReadActuatorMetrics() throws Exception {
+    mockMvc
+        .perform(get("/actuator/metrics").with(jwt()))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403));
+    mockMvc
+        .perform(delete("/actuator/caches").with(jwt()))
+        .andExpect(status().isForbidden());
   }
 
   @Test

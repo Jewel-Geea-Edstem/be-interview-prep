@@ -23,7 +23,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,caches,metrics
+        include: health,metrics
 
 app:
   short-url:
