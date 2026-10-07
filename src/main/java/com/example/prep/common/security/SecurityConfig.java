@@ -2,6 +2,8 @@ package com.example.prep.common.security;
 
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import java.time.Duration;
+import java.time.Instant;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -11,7 +13,10 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwtClaimNames;
+import org.springframework.security.oauth2.jwt.JwtClaimValidator;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
@@ -85,7 +90,10 @@ public class SecurityConfig {
         NimbusJwtDecoder.withSecretKey(jwtProperties.signingKey())
             .macAlgorithm(MacAlgorithm.HS256)
             .build();
-    decoder.setJwtValidator(new JwtTimestampValidator(Duration.ZERO));
+    decoder.setJwtValidator(
+        new DelegatingOAuth2TokenValidator<>(
+            new JwtClaimValidator<Instant>(JwtClaimNames.EXP, Objects::nonNull),
+            new JwtTimestampValidator(Duration.ZERO)));
     return decoder;
   }
 

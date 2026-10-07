@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.prep.user.entity.Role;
 import com.example.prep.user.service.UserService;
 import com.jayway.jsonpath.JsonPath;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,6 +28,11 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.JwsHeader;
+import org.springframework.security.oauth2.jwt.JwtClaimsSet;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -38,6 +44,7 @@ class AuthApiIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
   @Autowired private UserService userService;
+  @Autowired private JwtEncoder jwtEncoder;
 
   @Test
   void registerCreatesUserWithUserRole() throws Exception {
@@ -222,6 +229,27 @@ class AuthApiIntegrationTest {
     mockMvc
         .perform(head("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
         .andExpect(status().isOk());
+  }
+
+  @Test
+  void signedTokenWithoutExpiryReturns401() throws Exception {
+    String email = uniqueEmail();
+    register(email, TEST_PASSWORD).andExpect(status().isCreated());
+    JwtClaimsSet claims =
+        JwtClaimsSet.builder()
+            .subject(email)
+            .issuedAt(Instant.now())
+            .claim("roles", List.of("ADMIN"))
+            .build();
+    String token =
+        jwtEncoder
+            .encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims))
+            .getTokenValue();
+
+    mockMvc
+        .perform(get("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.status").value(401));
   }
 
   private ResultActions register(String email, String password) throws Exception {
