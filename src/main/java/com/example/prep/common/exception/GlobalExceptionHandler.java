@@ -34,7 +34,13 @@ public class GlobalExceptionHandler {
       MethodArgumentNotValidException ex, HttpServletRequest request) {
     List<FieldViolation> details =
         ex.getBindingResult().getFieldErrors().stream()
-            .map(error -> new FieldViolation(error.getField(), error.getDefaultMessage()))
+            .map(
+                error ->
+                    new FieldViolation(
+                        error.getField(),
+                        error.isBindingFailure()
+                            ? "Invalid value '%s'".formatted(error.getRejectedValue())
+                            : error.getDefaultMessage()))
             .toList();
     return build(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
   }
