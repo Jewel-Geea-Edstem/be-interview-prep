@@ -36,7 +36,7 @@ Health check: `curl http://localhost:8080/actuator/health`
 |---|----------|---------|
 | 1 | Task Manager API | [#1](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/1) |
 | 2 | URL Shortener | [#2](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/2) |
-| 3 | Authentication & Roles | |
+| 3 | Authentication & Roles | [#3](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/3) |
 | 4 | Product Catalog | |
 | 5 | Order Service | |
 

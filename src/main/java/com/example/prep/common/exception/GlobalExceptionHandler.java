@@ -5,10 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpMediaTypeNotAcceptableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
@@ -107,6 +110,28 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(GoneException.class)
   public ResponseEntity<ErrorResponse> handleGone(GoneException ex, HttpServletRequest request) {
     return build(HttpStatus.GONE, ex.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(ConflictException.class)
+  public ResponseEntity<ErrorResponse> handleConflict(
+      ConflictException ex, HttpServletRequest request) {
+    return build(HttpStatus.CONFLICT, ex.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponse> handleDataIntegrity(HttpServletRequest request) {
+    return build(HttpStatus.CONFLICT, "Request conflicts with existing data", request, List.of());
+  }
+
+  @ExceptionHandler(AuthenticationException.class)
+  public ResponseEntity<ErrorResponse> handleAuthentication(
+      AuthenticationException ex, HttpServletRequest request) {
+    return build(HttpStatus.UNAUTHORIZED, ex.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDenied(HttpServletRequest request) {
+    return build(HttpStatus.FORBIDDEN, "Access denied", request, List.of());
   }
 
   @ExceptionHandler(NoResourceFoundException.class)
