@@ -1,6 +1,7 @@
 package com.example.prep.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -154,6 +155,20 @@ class AuthApiIntegrationTest {
         .andExpect(jsonPath("$.content[?(@.email == '" + email + "')].role").value("ADMIN"))
         .andExpect(jsonPath("$.content[*].passwordHash").doesNotExist())
         .andExpect(jsonPath("$.page.totalElements").exists());
+  }
+
+  @Test
+  void userTokenCannotReachAdminListWithHead() throws Exception {
+    String email = uniqueEmail();
+    register(email, TEST_PASSWORD).andExpect(status().isCreated());
+    String token = loginToken(email, TEST_PASSWORD);
+
+    mockMvc
+        .perform(head("/api/v1/users").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        .andExpect(status().isForbidden());
+    mockMvc
+        .perform(head("/api/v1/users/me").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+        .andExpect(status().isOk());
   }
 
   private ResultActions register(String email, String password) throws Exception {
