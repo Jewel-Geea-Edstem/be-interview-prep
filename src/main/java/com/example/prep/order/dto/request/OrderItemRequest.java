@@ -1,0 +1,13 @@
+package com.example.prep.order.dto.request;
+
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+
+public record OrderItemRequest(
+    @NotNull(message = "productId is required") @Positive(message = "productId must be positive")
+        Long productId,
+    @NotNull(message = "quantity is required")
+        @Positive(message = "quantity must be positive")
+        @Max(value = 1000, message = "quantity must be at most 1000")
+        Integer quantity) {}
