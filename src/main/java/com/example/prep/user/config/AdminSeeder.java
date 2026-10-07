@@ -31,6 +31,6 @@ public class AdminSeeder implements ApplicationRunner {
       return;
     }
     userService.create(email, password, Role.ADMIN);
-    log.info("Seeded admin account {}", UserService.normalizeEmail(email));
+    log.info("Seeded admin account");
   }
 }
