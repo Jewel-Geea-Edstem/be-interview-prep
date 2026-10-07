@@ -104,6 +104,11 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.NOT_FOUND, ex.getMessage(), request, List.of());
   }
 
+  @ExceptionHandler(GoneException.class)
+  public ResponseEntity<ErrorResponse> handleGone(GoneException ex, HttpServletRequest request) {
+    return build(HttpStatus.GONE, ex.getMessage(), request, List.of());
+  }
+
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<ErrorResponse> handleNoResource(HttpServletRequest request) {
     return build(HttpStatus.NOT_FOUND, "Resource not found", request, List.of());
