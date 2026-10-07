@@ -13,7 +13,6 @@ import com.example.prep.product.repository.ProductSpecifications;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -51,13 +50,13 @@ public class ProductService {
         .map(productMapper::toResponse);
   }
 
-  @Cacheable(cacheNames = ProductCache.NAME, key = "#id")
+  @Cacheable(cacheNames = ProductCache.NAME, key = "#id", sync = true)
   @Transactional(readOnly = true)
   public ProductResponse get(Long id) {
     return productMapper.toResponse(find(id));
   }
 
-  @CachePut(cacheNames = ProductCache.NAME, key = "#id")
+  @CacheEvict(cacheNames = ProductCache.NAME, key = "#id")
   @Transactional
   public ProductResponse update(Long id, ProductRequest request) {
     Product product = find(id);
