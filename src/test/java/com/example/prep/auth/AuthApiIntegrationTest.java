@@ -105,6 +105,18 @@ class AuthApiIntegrationTest {
   }
 
   @Test
+  void passwordOverBcryptByteLimitReturns400() throws Exception {
+    String password = String.valueOf((char) 0xE9).repeat(40);
+
+    register(uniqueEmail(), password)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details[?(@.field == 'password')]").exists());
+    login(uniqueEmail(), password)
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details[?(@.field == 'password')]").exists());
+  }
+
+  @Test
   void loginReturnsTokenThatUnlocksOwnProfile() throws Exception {
     String email = uniqueEmail();
     register(email, TEST_PASSWORD).andExpect(status().isCreated());
