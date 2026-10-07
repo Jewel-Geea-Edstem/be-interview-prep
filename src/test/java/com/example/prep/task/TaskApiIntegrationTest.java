@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -141,6 +142,30 @@ class TaskApiIntegrationTest {
         .perform(get("/api/v1/tasks").param("sort", "nope"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("Unknown property 'nope'"));
+  }
+
+  @Test
+  void unsupportedContentTypeReturns415() throws Exception {
+    mockMvc
+        .perform(post("/api/v1/tasks").contentType(MediaType.TEXT_PLAIN).content("title"))
+        .andExpect(status().isUnsupportedMediaType())
+        .andExpect(jsonPath("$.status").value(415));
+  }
+
+  @Test
+  void unsupportedMethodReturns405() throws Exception {
+    mockMvc
+        .perform(patch("/api/v1/tasks/{id}", 1))
+        .andExpect(status().isMethodNotAllowed())
+        .andExpect(jsonPath("$.status").value(405));
+  }
+
+  @Test
+  void nonPositiveIdIsRejected() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/tasks/{id}", 0))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details[0].field").value("id"));
   }
 
   private String taskJson(String title, String status, LocalDate dueDate) {
