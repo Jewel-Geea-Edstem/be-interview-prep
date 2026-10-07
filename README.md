@@ -40,7 +40,7 @@ docker run -p 8080:8080 -e JWT_SECRET=local-run-secret-placeholder-0123456789abc
 ```
 
 - Health check: `curl http://localhost:8080/actuator/health`
-- API docs: http://localhost:8080/swagger-ui.html
+- API docs (interactive): http://localhost:8080/swagger-ui.html. Call `POST /api/v1/auth/login`, click **Authorize**, paste the `accessToken`, then try any endpoint. The raw OpenAPI spec is at `/v3/api-docs`.
 
 ## Test
 
