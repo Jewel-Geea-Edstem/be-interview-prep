@@ -25,7 +25,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
-@SpringBootTest(properties = OrderConcurrencyTest.ORDERS_DB)
+@SpringBootTest(properties = {OrderConcurrencyTest.ORDERS_DB, OrderConcurrencyTest.POOL_SIZE})
 @AutoConfigureMockMvc
 class OrderApiIntegrationTest {
 

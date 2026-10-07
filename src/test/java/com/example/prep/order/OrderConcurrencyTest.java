@@ -10,6 +10,7 @@ import com.example.prep.order.service.OrderService;
 import com.example.prep.order.service.PlacedOrder;
 import com.example.prep.product.entity.Product;
 import com.example.prep.product.repository.ProductRepository;
+import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -25,17 +26,19 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest(properties = OrderConcurrencyTest.ORDERS_DB)
+@SpringBootTest(properties = {OrderConcurrencyTest.ORDERS_DB, OrderConcurrencyTest.POOL_SIZE})
 class OrderConcurrencyTest {
 
   static final String ORDERS_DB =
       "spring.datasource.url=jdbc:h2:mem:orders;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
+  static final String POOL_SIZE = "spring.datasource.hikari.maximum-pool-size=60";
 
   private static final String CUSTOMER = "alice@example.com";
 
   @Autowired private OrderService orderService;
   @Autowired private OrderRepository orderRepository;
   @Autowired private ProductRepository productRepository;
+  @Autowired private EntityManager entityManager;
 
   @Test
   void fiftyConcurrentOrdersForTenUnitsSellExactlyTen() throws Exception {
@@ -54,6 +57,7 @@ class OrderConcurrencyTest {
                 assertThat(outcome.error())
                     .isInstanceOf(ConflictException.class)
                     .hasMessageStartingWith("Insufficient stock for product " + productId));
+    assertThat(ordersContaining(productId)).isEqualTo(10);
     assertThat(stock(productId)).isZero();
   }
 
@@ -71,6 +75,22 @@ class OrderConcurrencyTest {
     assertThat(outcomes.stream().filter(outcome -> outcome.placed().created())).hasSize(1);
     assertThat(orderRepository.countByIdempotencyKeyAndCustomerEmail(key, CUSTOMER)).isEqualTo(1);
     assertThat(stock(productId)).isEqualTo(7);
+  }
+
+  @Test
+  void concurrentRetriesForTheLastStockAllReturnTheOneOrder() throws Exception {
+    Long productId = product("Last Stock Widget " + UUID.randomUUID(), 3);
+    OrderRequest request = request(productId, 3);
+    String key = UUID.randomUUID().toString();
+
+    List<Outcome> outcomes = runConcurrently(10, () -> orderService.place(CUSTOMER, key, request));
+
+    assertThat(outcomes).allSatisfy(outcome -> assertThat(outcome.error()).isNull());
+    assertThat(outcomes.stream().map(outcome -> outcome.placed().order().id()).distinct())
+        .hasSize(1);
+    assertThat(outcomes.stream().filter(outcome -> outcome.placed().created())).hasSize(1);
+    assertThat(ordersContaining(productId)).isEqualTo(1);
+    assertThat(stock(productId)).isZero();
   }
 
   @Test
@@ -128,6 +148,15 @@ class OrderConcurrencyTest {
     product.setStock(stock);
     product.setRating(new BigDecimal("4.0"));
     return productRepository.save(product).getId();
+  }
+
+  private long ordersContaining(Long productId) {
+    return entityManager
+        .createQuery(
+            "select count(distinct i.order.id) from OrderItem i where i.productId = :productId",
+            Long.class)
+        .setParameter("productId", productId)
+        .getSingleResult();
   }
 
   private int stock(Long productId) {
