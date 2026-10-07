@@ -3,6 +3,7 @@ package com.example.prep.task;
 import static org.hamcrest.Matchers.everyItem;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.is;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
@@ -33,7 +34,11 @@ class TaskApiIntegrationTest {
 
     String created =
         mockMvc
-            .perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content(body))
+            .perform(
+                post("/api/v1/tasks")
+                    .with(jwt())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(body))
             .andExpect(status().isCreated())
             .andExpect(header().exists("Location"))
             .andExpect(jsonPath("$.status").value("IN_PROGRESS"))
@@ -44,11 +49,11 @@ class TaskApiIntegrationTest {
     Integer id = JsonPath.read(created, "$.id");
 
     mockMvc
-        .perform(get("/api/v1/tasks/{id}", id))
+        .perform(get("/api/v1/tasks/{id}", id).with(jwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.title").value("Write report"));
     mockMvc
-        .perform(get("/api/v1/tasks").param("status", "IN_PROGRESS"))
+        .perform(get("/api/v1/tasks").with(jwt()).param("status", "IN_PROGRESS"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content[*].id", hasItem(id)))
         .andExpect(jsonPath("$.content[*].status", everyItem(is("IN_PROGRESS"))))
@@ -56,12 +61,13 @@ class TaskApiIntegrationTest {
     mockMvc
         .perform(
             put("/api/v1/tasks/{id}", id)
+                .with(jwt())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(taskJson("Write report", "DONE", null)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value("DONE"));
-    mockMvc.perform(delete("/api/v1/tasks/{id}", id)).andExpect(status().isNoContent());
-    mockMvc.perform(get("/api/v1/tasks/{id}", id)).andExpect(status().isNotFound());
+    mockMvc.perform(delete("/api/v1/tasks/{id}", id).with(jwt())).andExpect(status().isNoContent());
+    mockMvc.perform(get("/api/v1/tasks/{id}", id).with(jwt())).andExpect(status().isNotFound());
   }
 
   @Test
@@ -69,7 +75,8 @@ class TaskApiIntegrationTest {
     String body = taskJson("x".repeat(101), "TODO", LocalDate.now().minusDays(1));
 
     mockMvc
-        .perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content(body))
+        .perform(
+            post("/api/v1/tasks").with(jwt()).contentType(MediaType.APPLICATION_JSON).content(body))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.message").value("Validation failed"))
@@ -80,7 +87,8 @@ class TaskApiIntegrationTest {
   @Test
   void missingTitleIsRejected() throws Exception {
     mockMvc
-        .perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content("{}"))
+        .perform(
+            post("/api/v1/tasks").with(jwt()).contentType(MediaType.APPLICATION_JSON).content("{}"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[0].field").value("title"));
   }
@@ -90,7 +98,8 @@ class TaskApiIntegrationTest {
     String body = "{\"title\":\"A\",\"status\":\"LATER\"}";
 
     mockMvc
-        .perform(post("/api/v1/tasks").contentType(MediaType.APPLICATION_JSON).content(body))
+        .perform(
+            post("/api/v1/tasks").with(jwt()).contentType(MediaType.APPLICATION_JSON).content(body))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.error").value("Bad Request"));
   }
@@ -98,7 +107,7 @@ class TaskApiIntegrationTest {
   @Test
   void unknownTaskReturns404InCommonShape() throws Exception {
     mockMvc
-        .perform(get("/api/v1/tasks/{id}", 999999))
+        .perform(get("/api/v1/tasks/{id}", 999999).with(jwt()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.status").value(404))
         .andExpect(jsonPath("$.message").value("Task 999999 not found"))
