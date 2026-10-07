@@ -104,6 +104,6 @@ Every error uses one JSON shape: `{status, error, message, path, timestamp, deta
 | 2 | URL Shortener | [#2](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/2) |
 | 3 | Authentication & Roles | [#3](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/3) |
 | 4 | Product Catalog | [#4](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/4) |
-| 5 | Order Service | |
+| 5 | Order Service | [#5](https://github.com/Jewel-Geea-Edstem/be-interview-prep/pull/5) |
 
 Video:
