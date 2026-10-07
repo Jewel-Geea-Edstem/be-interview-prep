@@ -1,5 +1,6 @@
 package com.example.prep.order.service;
 
+import com.example.prep.common.exception.NotFoundException;
 import com.example.prep.order.dto.response.OrderResponse;
 import com.example.prep.order.entity.Order;
 import com.example.prep.order.entity.OrderItem;
@@ -28,7 +29,6 @@ public class OrderPlacement {
   @Transactional
   public OrderResponse place(
       String customerEmail, String idempotencyKey, String requestHash, List<OrderLine> lines) {
-    stockService.reserve(lines);
     Map<Long, BigDecimal> prices =
         productRepository.findAllById(lines.stream().map(OrderLine::productId).toList()).stream()
             .collect(Collectors.toMap(Product::getId, Product::getPrice));
@@ -38,12 +38,18 @@ public class OrderPlacement {
     order.setRequestHash(requestHash);
     order.setStatus(OrderStatus.PLACED);
     for (OrderLine line : lines) {
+      BigDecimal price = prices.get(line.productId());
+      if (price == null) {
+        throw new NotFoundException("Product", line.productId());
+      }
       OrderItem item = new OrderItem();
       item.setProductId(line.productId());
       item.setQuantity(line.quantity());
-      item.setUnitPrice(prices.get(line.productId()));
+      item.setUnitPrice(price);
       order.addItem(item);
     }
-    return orderMapper.toResponse(orderRepository.saveAndFlush(order));
+    Order claimed = orderRepository.saveAndFlush(order);
+    stockService.reserve(lines);
+    return orderMapper.toResponse(claimed);
   }
 }
