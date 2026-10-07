@@ -25,8 +25,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(properties = OrderConcurrencyTest.ORDERS_DB)
 class OrderConcurrencyTest {
+
+  static final String ORDERS_DB =
+      "spring.datasource.url=jdbc:h2:mem:orders;DB_CLOSE_DELAY=-1;LOCK_TIMEOUT=10000";
 
   private static final String CUSTOMER = "alice@example.com";
 
