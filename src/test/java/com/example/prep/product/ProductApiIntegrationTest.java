@@ -127,6 +127,36 @@ class ProductApiIntegrationTest {
   }
 
   @Test
+  void nonNumericPriceReportsPlainMessage() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/products").with(jwt()).param("minPrice", "abc"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details[0].field").value("minPrice"))
+        .andExpect(jsonPath("$.details[0].message").value("Invalid value 'abc'"));
+  }
+
+  @Test
+  void requestWithoutTokenIsUnauthorized() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/products"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.status").value(401));
+    mockMvc.perform(get("/api/v1/products/{id}", 1)).andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void updatingUnknownProductReturns404() throws Exception {
+    mockMvc
+        .perform(
+            put("/api/v1/products/{id}", 999999)
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(productJson("Desk Lamp", "19.99", 5)))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.message").value("Product 999999 not found"));
+  }
+
+  @Test
   void unknownProductReturns404() throws Exception {
     mockMvc
         .perform(get("/api/v1/products/{id}", 999999).with(jwt()))
@@ -161,9 +191,7 @@ class ProductApiIntegrationTest {
         .perform(get("/actuator/metrics").with(jwt()))
         .andExpect(status().isForbidden())
         .andExpect(jsonPath("$.status").value(403));
-    mockMvc
-        .perform(delete("/actuator/caches").with(jwt()))
-        .andExpect(status().isForbidden());
+    mockMvc.perform(delete("/actuator/caches").with(jwt())).andExpect(status().isForbidden());
   }
 
   @Test
