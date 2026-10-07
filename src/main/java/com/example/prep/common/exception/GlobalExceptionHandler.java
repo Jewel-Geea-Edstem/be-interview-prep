@@ -101,6 +101,12 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.BAD_REQUEST, message, request, List.of());
   }
 
+  @ExceptionHandler(BadRequestException.class)
+  public ResponseEntity<ErrorResponse> handleBadRequest(
+      BadRequestException ex, HttpServletRequest request) {
+    return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+  }
+
   @ExceptionHandler(NotFoundException.class)
   public ResponseEntity<ErrorResponse> handleNotFound(
       NotFoundException ex, HttpServletRequest request) {
