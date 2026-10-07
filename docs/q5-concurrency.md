@@ -10,6 +10,6 @@ Each order line runs `update products set stock = stock - :qty where id = :id an
 
 Deadlocks are avoided by merging duplicate product ids and updating rows in ascending id order.
 
-Idempotency: `(customer_email, idempotency_key)` is unique. A replay returns the stored order with 200. A concurrent duplicate fails on insert, its transaction (including its stock reservation) rolls back, and the caller then reads and returns the winner's order in a new transaction. A request hash (SHA-256 of the canonical items) turns key reuse with a different body into a 409.
+Idempotency: `(customer_email, idempotency_key)` is unique, and the order row is inserted and flushed *before* any stock is reserved, so the key is claimed first. A concurrent request with the same key blocks on the unique index until the first transaction finishes and never touches stock: if the first commits, its insert fails and it returns the stored order with 200 (even when that order took the last unit); if the first rolls back, it proceeds as a fresh order. Only a violation of `uk_orders_customer_idempotency_key` is treated as a retry race; any other integrity error is rethrown. A request hash (SHA-256 of the canonical items) turns key reuse with a different body into a 409.
 
 Cancel uses a guarded `update orders set status = 'CANCELLED' where id = :id and status = 'PLACED'`. Only one concurrent cancel can update the row, so stock is restored once, without a `@Version` column or retry handling.
