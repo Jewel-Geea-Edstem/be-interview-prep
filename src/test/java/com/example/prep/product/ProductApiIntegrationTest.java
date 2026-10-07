@@ -1,6 +1,7 @@
 package com.example.prep.product;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -19,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.JwtRequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
@@ -30,7 +33,7 @@ class ProductApiIntegrationTest {
   @Test
   void seedsOneHundredProductsWithPageMetadata() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products").param("size", "20"))
+        .perform(get("/api/v1/products").with(jwt()).param("size", "20"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.content.length()").value(20))
         .andExpect(jsonPath("$.page.totalElements").value(100))
@@ -41,7 +44,7 @@ class ProductApiIntegrationTest {
   @Test
   void pageSizeIsCappedAtOneHundred() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products").param("size", "500"))
+        .perform(get("/api/v1/products").with(jwt()).param("size", "500"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.page.size").value(100));
   }
@@ -52,6 +55,7 @@ class ProductApiIntegrationTest {
         mockMvc
             .perform(
                 get("/api/v1/products")
+                    .with(jwt())
                     .param("category", "electronics")
                     .param("minPrice", "50")
                     .param("maxPrice", "400")
@@ -80,7 +84,11 @@ class ProductApiIntegrationTest {
   void sortsByPriceDescending() throws Exception {
     String body =
         mockMvc
-            .perform(get("/api/v1/products").param("sort", "price,desc").param("size", "100"))
+            .perform(
+                get("/api/v1/products")
+                    .with(jwt())
+                    .param("sort", "price,desc")
+                    .param("size", "100"))
             .andExpect(status().isOk())
             .andReturn()
             .getResponse()
@@ -94,7 +102,7 @@ class ProductApiIntegrationTest {
   @Test
   void unknownSortPropertyIsRejected() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products").param("sort", "password,asc"))
+        .perform(get("/api/v1/products").with(jwt()).param("sort", "password,asc"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.path").value("/api/v1/products"));
@@ -103,7 +111,8 @@ class ProductApiIntegrationTest {
   @Test
   void invertedPriceRangeIsRejected() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products").param("minPrice", "100").param("maxPrice", "10"))
+        .perform(
+            get("/api/v1/products").with(jwt()).param("minPrice", "100").param("maxPrice", "10"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("Validation failed"))
         .andExpect(jsonPath("$.details[0].field").value("priceRangeValid"));
@@ -112,7 +121,7 @@ class ProductApiIntegrationTest {
   @Test
   void negativePriceIsRejected() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products").param("minPrice", "-1"))
+        .perform(get("/api/v1/products").with(jwt()).param("minPrice", "-1"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[0].field").value("minPrice"));
   }
@@ -120,20 +129,21 @@ class ProductApiIntegrationTest {
   @Test
   void unknownProductReturns404() throws Exception {
     mockMvc
-        .perform(get("/api/v1/products/{id}", 999999))
+        .perform(get("/api/v1/products/{id}", 999999).with(jwt()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message").value("Product 999999 not found"));
   }
 
   @Test
   void repeatedLookupsShowAsCacheHitsInMetrics() throws Exception {
-    mockMvc.perform(get("/api/v1/products/{id}", 1)).andExpect(status().isOk());
-    mockMvc.perform(get("/api/v1/products/{id}", 1)).andExpect(status().isOk());
+    mockMvc.perform(get("/api/v1/products/{id}", 1).with(jwt())).andExpect(status().isOk());
+    mockMvc.perform(get("/api/v1/products/{id}", 1).with(jwt())).andExpect(status().isOk());
 
     String body =
         mockMvc
             .perform(
                 get("/actuator/metrics/cache.gets")
+                    .with(jwt())
                     .param("tag", "cache:products")
                     .param("tag", "result:hit"))
             .andExpect(status().isOk())
@@ -151,6 +161,7 @@ class ProductApiIntegrationTest {
         mockMvc
             .perform(
                 post("/api/v1/products")
+                    .with(admin())
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(productJson("Desk Lamp", "19.99", 5)))
             .andExpect(status().isCreated())
@@ -164,13 +175,18 @@ class ProductApiIntegrationTest {
     mockMvc
         .perform(
             put("/api/v1/products/{id}", id)
+                .with(admin())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(productJson("Desk Lamp", "24.50", 3)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.price").value(24.5));
-    mockMvc.perform(delete("/api/v1/products/{id}", id)).andExpect(status().isNoContent());
-    mockMvc.perform(get("/api/v1/products/{id}", id)).andExpect(status().isNotFound());
-    mockMvc.perform(delete("/api/v1/products/{id}", id)).andExpect(status().isNotFound());
+    mockMvc
+        .perform(delete("/api/v1/products/{id}", id).with(admin()))
+        .andExpect(status().isNoContent());
+    mockMvc.perform(get("/api/v1/products/{id}", id).with(jwt())).andExpect(status().isNotFound());
+    mockMvc
+        .perform(delete("/api/v1/products/{id}", id).with(admin()))
+        .andExpect(status().isNotFound());
   }
 
   @Test
@@ -181,12 +197,37 @@ class ProductApiIntegrationTest {
         """;
 
     mockMvc
-        .perform(post("/api/v1/products").contentType(MediaType.APPLICATION_JSON).content(body))
+        .perform(
+            post("/api/v1/products")
+                .with(admin())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[?(@.field == 'name')]").exists())
         .andExpect(jsonPath("$.details[?(@.field == 'price')]").exists())
         .andExpect(jsonPath("$.details[?(@.field == 'stock')]").exists())
         .andExpect(jsonPath("$.details[?(@.field == 'rating')]").exists());
+  }
+
+  @Test
+  void plainUserCannotWriteProducts() throws Exception {
+    mockMvc
+        .perform(
+            post("/api/v1/products")
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(productJson("Desk Lamp", "19.99", 5)))
+        .andExpect(status().isForbidden())
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.error").value("Forbidden"))
+        .andExpect(jsonPath("$.path").value("/api/v1/products"));
+    mockMvc
+        .perform(delete("/api/v1/products/{id}", 1).with(jwt()))
+        .andExpect(status().isForbidden());
+  }
+
+  private JwtRequestPostProcessor admin() {
+    return jwt().authorities(new SimpleGrantedAuthority("ROLE_ADMIN"));
   }
 
   private String productJson(String name, String price, int stock) {
