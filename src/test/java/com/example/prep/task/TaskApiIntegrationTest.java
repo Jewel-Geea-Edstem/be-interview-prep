@@ -105,6 +105,44 @@ class TaskApiIntegrationTest {
         .andExpect(jsonPath("$.timestamp").exists());
   }
 
+  @Test
+  void invalidUpdateReportsRealFieldNames() throws Exception {
+    String body = taskJson("", "TODO", LocalDate.now().minusDays(1));
+
+    mockMvc
+        .perform(put("/api/v1/tasks/{id}", 1).contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details[?(@.field == 'title')]").exists())
+        .andExpect(jsonPath("$.details[?(@.field == 'dueDate')]").exists());
+  }
+
+  @Test
+  void updateAndDeleteOfUnknownTaskReturn404() throws Exception {
+    String body = taskJson("Title", "TODO", null);
+
+    mockMvc
+        .perform(
+            put("/api/v1/tasks/{id}", 999999).contentType(MediaType.APPLICATION_JSON).content(body))
+        .andExpect(status().isNotFound());
+    mockMvc.perform(delete("/api/v1/tasks/{id}", 999999)).andExpect(status().isNotFound());
+  }
+
+  @Test
+  void invalidStatusFilterReturnsPlainMessage() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/tasks").param("status", "LATER"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("Invalid value 'LATER' for parameter 'status'"));
+  }
+
+  @Test
+  void unknownSortPropertyReturns400() throws Exception {
+    mockMvc
+        .perform(get("/api/v1/tasks").param("sort", "nope"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.message").value("Unknown property 'nope'"));
+  }
+
   private String taskJson(String title, String status, LocalDate dueDate) {
     String due = dueDate == null ? "null" : "\"" + dueDate + "\"";
     return """
