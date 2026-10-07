@@ -9,9 +9,11 @@ import com.example.prep.order.entity.OrderStatus;
 import com.example.prep.order.mapper.OrderMapper;
 import com.example.prep.order.repository.OrderRepository;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +39,9 @@ public class OrderService {
       return new PlacedOrder(
           orderPlacement.place(customerEmail, idempotencyKey, requestHash, lines), true);
     } catch (DataIntegrityViolationException ex) {
+      if (!isIdempotencyKeyClash(ex)) {
+        throw ex;
+      }
       log.info("Concurrent retry detected for idempotency key {}", idempotencyKey);
       return replay(customerEmail, idempotencyKey, requestHash)
           .map(existing -> new PlacedOrder(existing, false))
@@ -77,6 +82,20 @@ public class OrderService {
               }
               return orderMapper.toResponse(existing);
             });
+  }
+
+  private static boolean isIdempotencyKeyClash(DataIntegrityViolationException ex) {
+    for (Throwable cause = ex; cause != null; cause = cause.getCause()) {
+      if (cause instanceof ConstraintViolationException violation
+          && violation.getConstraintName() != null
+          && violation
+              .getConstraintName()
+              .toLowerCase(Locale.ROOT)
+              .contains(Order.IDEMPOTENCY_KEY_CONSTRAINT)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private Order find(String customerEmail, Long id) {

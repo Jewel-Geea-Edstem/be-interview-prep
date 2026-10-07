@@ -25,12 +25,14 @@ import org.hibernate.annotations.CreationTimestamp;
     name = "orders",
     uniqueConstraints =
         @UniqueConstraint(
-            name = "uk_orders_customer_idempotency_key",
+            name = Order.IDEMPOTENCY_KEY_CONSTRAINT,
             columnNames = {"customer_email", "idempotency_key"}))
 @Getter
 @Setter
 @NoArgsConstructor
 public class Order {
+
+  public static final String IDEMPOTENCY_KEY_CONSTRAINT = "uk_orders_customer_idempotency_key";
 
   @Id
   @GeneratedValue(strategy = GenerationType.IDENTITY)
