@@ -31,7 +31,7 @@ public class UserService {
   public UserResponse create(String email, String rawPassword, Role role) {
     String normalized = normalizeEmail(email);
     if (userRepository.existsByEmail(normalized)) {
-      throw new ConflictException("Email " + normalized + " is already registered");
+      throw new ConflictException("Email is already registered");
     }
     User user = new User();
     user.setEmail(normalized);

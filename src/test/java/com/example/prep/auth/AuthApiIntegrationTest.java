@@ -1,5 +1,6 @@
 package com.example.prep.auth;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.head;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -11,13 +12,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.example.prep.user.entity.Role;
 import com.example.prep.user.service.UserService;
 import com.jayway.jsonpath.JsonPath;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
 
@@ -52,6 +61,38 @@ class AuthApiIntegrationTest {
     register(email.toUpperCase(), TEST_PASSWORD)
         .andExpect(status().isConflict())
         .andExpect(jsonPath("$.status").value(409));
+  }
+
+  @Test
+  void concurrentDuplicateRegistrationsYieldOneCreatedAndConflicts() throws Exception {
+    String email = uniqueEmail();
+    int attempts = 8;
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService pool = Executors.newFixedThreadPool(attempts);
+    try {
+      List<Future<MockHttpServletResponse>> results = new ArrayList<>();
+      for (int i = 0; i < attempts; i++) {
+        results.add(
+            pool.submit(
+                () -> {
+                  start.await();
+                  return register(email, TEST_PASSWORD).andReturn().getResponse();
+                }));
+      }
+      start.countDown();
+      List<Integer> statuses = new ArrayList<>();
+      for (Future<MockHttpServletResponse> result : results) {
+        MockHttpServletResponse response = result.get(60, TimeUnit.SECONDS);
+        statuses.add(response.getStatus());
+        if (response.getStatus() == 409) {
+          assertThat(response.getContentAsString()).doesNotContain("SQL", "constraint", email);
+        }
+      }
+      assertThat(statuses).containsOnly(201, 409);
+      assertThat(statuses).filteredOn(code -> code == 201).hasSize(1);
+    } finally {
+      pool.shutdownNow();
+    }
   }
 
   @Test

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -115,6 +116,11 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleConflict(
       ConflictException ex, HttpServletRequest request) {
     return build(HttpStatus.CONFLICT, ex.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(DataIntegrityViolationException.class)
+  public ResponseEntity<ErrorResponse> handleDataIntegrity(HttpServletRequest request) {
+    return build(HttpStatus.CONFLICT, "Request conflicts with existing data", request, List.of());
   }
 
   @ExceptionHandler(AuthenticationException.class)
