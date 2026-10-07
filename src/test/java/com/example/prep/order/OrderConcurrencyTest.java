@@ -70,6 +70,25 @@ class OrderConcurrencyTest {
     assertThat(stock(productId)).isEqualTo(7);
   }
 
+  @Test
+  void concurrentCancelsRestoreStockOnce() throws Exception {
+    Long productId = product("Cancel Widget " + UUID.randomUUID(), 10);
+    Long orderId =
+        orderService
+            .place(CUSTOMER, UUID.randomUUID().toString(), request(productId, 4))
+            .order()
+            .id();
+
+    List<Outcome> outcomes =
+        runConcurrently(10, () -> new PlacedOrder(orderService.cancel(CUSTOMER, orderId), false));
+
+    assertThat(outcomes.stream().filter(Outcome::succeeded)).hasSize(1);
+    assertThat(outcomes.stream().filter(Outcome::failed))
+        .hasSize(9)
+        .allSatisfy(outcome -> assertThat(outcome.error()).isInstanceOf(ConflictException.class));
+    assertThat(stock(productId)).isEqualTo(10);
+  }
+
   private List<Outcome> runConcurrently(int count, Callable<PlacedOrder> call) throws Exception {
     ExecutorService executor = Executors.newFixedThreadPool(count);
     CountDownLatch start = new CountDownLatch(1);
