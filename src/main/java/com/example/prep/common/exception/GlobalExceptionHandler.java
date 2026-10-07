@@ -34,7 +34,13 @@ public class GlobalExceptionHandler {
       MethodArgumentNotValidException ex, HttpServletRequest request) {
     List<FieldViolation> details =
         ex.getBindingResult().getFieldErrors().stream()
-            .map(error -> new FieldViolation(error.getField(), error.getDefaultMessage()))
+            .map(
+                error ->
+                    new FieldViolation(
+                        error.getField(),
+                        error.isBindingFailure()
+                            ? "Invalid value '%s'".formatted(error.getRejectedValue())
+                            : error.getDefaultMessage()))
             .toList();
     return build(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
   }
@@ -99,6 +105,12 @@ public class GlobalExceptionHandler {
       PropertyReferenceException ex, HttpServletRequest request) {
     String message = "Unknown property '%s'".formatted(ex.getPropertyName());
     return build(HttpStatus.BAD_REQUEST, message, request, List.of());
+  }
+
+  @ExceptionHandler(BadRequestException.class)
+  public ResponseEntity<ErrorResponse> handleBadRequest(
+      BadRequestException ex, HttpServletRequest request) {
+    return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
   }
 
   @ExceptionHandler(NotFoundException.class)
