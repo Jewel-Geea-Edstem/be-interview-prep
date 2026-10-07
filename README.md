@@ -76,7 +76,7 @@ TOKEN=$(curl -s -X POST localhost:8080/api/v1/auth/login -H 'Content-Type: appli
 | URL shortener | `POST /api/v1/urls`, `GET /r/{code}`, `GET /api/v1/urls/{code}/stats` | `curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' -d '{"url":"https://example.com"}' localhost:8080/api/v1/urls` |
 | Auth | `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `GET /api/v1/users/me`, `GET /api/v1/users` (ADMIN) | `curl -H "Authorization: Bearer $TOKEN" localhost:8080/api/v1/users/me` |
 | Products | `GET /api/v1/products?category=&minPrice=&maxPrice=&inStock=&q=&sort=&page=&size=`, `GET /api/v1/products/{id}`, `POST/PUT/DELETE` (ADMIN) | `curl -H "Authorization: Bearer $TOKEN" "localhost:8080/api/v1/products?category=books&inStock=true&sort=price,desc"` |
-| Orders | `POST /api/v1/orders` (header `Idempotency-Key`), `GET /api/v1/orders/{id}`, `POST /api/v1/orders/{id}/cancel` | `curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Idempotency-Key: order-1' -H 'Content-Type: application/json' -d '{"items":[{"productId":1,"quantity":1}]}' localhost:8080/api/v1/orders` |
+| Orders | `POST /api/v1/orders` (header `Idempotency-Key`), `GET /api/v1/orders/{id}`, `POST /api/v1/orders/{id}/cancel` | `curl -X POST -H "Authorization: Bearer $TOKEN" -H 'Idempotency-Key: order-1' -H 'Content-Type: application/json' -d '{"items":[{"productId":2,"quantity":1}]}' localhost:8080/api/v1/orders` |
 
 Every error uses one JSON shape: `{status, error, message, path, timestamp, details[]}`.
 
