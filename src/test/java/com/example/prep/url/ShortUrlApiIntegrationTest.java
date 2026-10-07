@@ -2,6 +2,7 @@ package com.example.prep.url;
 
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.not;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -50,7 +51,7 @@ class ShortUrlApiIntegrationTest {
     mockMvc.perform(get("/r/{code}", code)).andExpect(status().isFound());
 
     mockMvc
-        .perform(get("/api/v1/urls/{code}/stats", code))
+        .perform(get("/api/v1/urls/{code}/stats", code).with(jwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.code").value(code))
         .andExpect(jsonPath("$.shortUrl", endsWith("/r/" + code)))
@@ -103,7 +104,9 @@ class ShortUrlApiIntegrationTest {
         .perform(get("/r/{code}", "zzzzzzz"))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.status").value(404));
-    mockMvc.perform(get("/api/v1/urls/{code}/stats", "zzzzzzz")).andExpect(status().isNotFound());
+    mockMvc
+        .perform(get("/api/v1/urls/{code}/stats", "zzzzzzz").with(jwt()))
+        .andExpect(status().isNotFound());
   }
 
   @Test
@@ -124,7 +127,7 @@ class ShortUrlApiIntegrationTest {
         .andExpect(status().isGone())
         .andExpect(jsonPath("$.status").value(410));
     mockMvc
-        .perform(get("/api/v1/urls/{code}/stats", "expd0001"))
+        .perform(get("/api/v1/urls/{code}/stats", "expd0001").with(jwt()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.visitCount").value(0));
   }
@@ -133,6 +136,6 @@ class ShortUrlApiIntegrationTest {
     String expiry = expiresAt == null ? "null" : "\"" + expiresAt + "\"";
     String body = "{\"url\":\"" + url + "\",\"expiresAt\":" + expiry + "}";
     return mockMvc.perform(
-        post("/api/v1/urls").contentType(MediaType.APPLICATION_JSON).content(body));
+        post("/api/v1/urls").with(jwt()).contentType(MediaType.APPLICATION_JSON).content(body));
   }
 }

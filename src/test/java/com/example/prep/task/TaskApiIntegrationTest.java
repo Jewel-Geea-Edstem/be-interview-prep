@@ -120,7 +120,11 @@ class TaskApiIntegrationTest {
     String body = taskJson("", "TODO", LocalDate.now().minusDays(1));
 
     mockMvc
-        .perform(put("/api/v1/tasks/{id}", 1).contentType(MediaType.APPLICATION_JSON).content(body))
+        .perform(
+            put("/api/v1/tasks/{id}", 1)
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[?(@.field == 'title')]").exists())
         .andExpect(jsonPath("$.details[?(@.field == 'dueDate')]").exists());
@@ -132,15 +136,20 @@ class TaskApiIntegrationTest {
 
     mockMvc
         .perform(
-            put("/api/v1/tasks/{id}", 999999).contentType(MediaType.APPLICATION_JSON).content(body))
+            put("/api/v1/tasks/{id}", 999999)
+                .with(jwt())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
         .andExpect(status().isNotFound());
-    mockMvc.perform(delete("/api/v1/tasks/{id}", 999999)).andExpect(status().isNotFound());
+    mockMvc
+        .perform(delete("/api/v1/tasks/{id}", 999999).with(jwt()))
+        .andExpect(status().isNotFound());
   }
 
   @Test
   void invalidStatusFilterReturnsPlainMessage() throws Exception {
     mockMvc
-        .perform(get("/api/v1/tasks").param("status", "LATER"))
+        .perform(get("/api/v1/tasks").with(jwt()).param("status", "LATER"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("Invalid value 'LATER' for parameter 'status'"));
   }
@@ -148,7 +157,7 @@ class TaskApiIntegrationTest {
   @Test
   void unknownSortPropertyReturns400() throws Exception {
     mockMvc
-        .perform(get("/api/v1/tasks").param("sort", "nope"))
+        .perform(get("/api/v1/tasks").with(jwt()).param("sort", "nope"))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.message").value("Unknown property 'nope'"));
   }
@@ -156,7 +165,8 @@ class TaskApiIntegrationTest {
   @Test
   void unsupportedContentTypeReturns415() throws Exception {
     mockMvc
-        .perform(post("/api/v1/tasks").contentType(MediaType.TEXT_PLAIN).content("title"))
+        .perform(
+            post("/api/v1/tasks").with(jwt()).contentType(MediaType.TEXT_PLAIN).content("title"))
         .andExpect(status().isUnsupportedMediaType())
         .andExpect(jsonPath("$.status").value(415));
   }
@@ -164,7 +174,7 @@ class TaskApiIntegrationTest {
   @Test
   void unsupportedMethodReturns405() throws Exception {
     mockMvc
-        .perform(patch("/api/v1/tasks/{id}", 1))
+        .perform(patch("/api/v1/tasks/{id}", 1).with(jwt()))
         .andExpect(status().isMethodNotAllowed())
         .andExpect(jsonPath("$.status").value(405));
   }
@@ -172,7 +182,7 @@ class TaskApiIntegrationTest {
   @Test
   void nonPositiveIdIsRejected() throws Exception {
     mockMvc
-        .perform(get("/api/v1/tasks/{id}", 0))
+        .perform(get("/api/v1/tasks/{id}", 0).with(jwt()))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.details[0].field").value("id"));
   }
