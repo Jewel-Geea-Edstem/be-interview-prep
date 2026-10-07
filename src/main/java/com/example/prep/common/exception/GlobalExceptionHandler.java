@@ -10,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -111,6 +113,18 @@ public class GlobalExceptionHandler {
   public ResponseEntity<ErrorResponse> handleMethodNotAllowed(
       HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
     return build(HttpStatus.METHOD_NOT_ALLOWED, ex.getMessage(), request, List.of());
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+  public ResponseEntity<ErrorResponse> handleUnsupportedMediaType(
+      HttpMediaTypeNotSupportedException ex, HttpServletRequest request) {
+    String message = "Content type '%s' is not supported".formatted(ex.getContentType());
+    return build(HttpStatus.UNSUPPORTED_MEDIA_TYPE, message, request, List.of());
+  }
+
+  @ExceptionHandler(HttpMediaTypeNotAcceptableException.class)
+  public ResponseEntity<Void> handleNotAcceptable() {
+    return ResponseEntity.status(HttpStatus.NOT_ACCEPTABLE).build();
   }
 
   @ExceptionHandler(Exception.class)
