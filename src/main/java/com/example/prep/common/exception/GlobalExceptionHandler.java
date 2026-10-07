@@ -5,9 +5,11 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -43,7 +45,9 @@ public class GlobalExceptionHandler {
                         .map(
                             error ->
                                 new FieldViolation(
-                                    result.getMethodParameter().getParameterName(),
+                                    error instanceof FieldError fieldError
+                                        ? fieldError.getField()
+                                        : result.getMethodParameter().getParameterName(),
                                     error.getDefaultMessage())))
             .toList();
     return build(HttpStatus.BAD_REQUEST, "Validation failed", request, details);
@@ -64,14 +68,32 @@ public class GlobalExceptionHandler {
     return build(HttpStatus.BAD_REQUEST, "Malformed request body", request, List.of());
   }
 
-  @ExceptionHandler({
-    MethodArgumentTypeMismatchException.class,
-    MissingServletRequestParameterException.class,
-    MissingRequestHeaderException.class
-  })
-  public ResponseEntity<ErrorResponse> handleBadParameter(
-      Exception ex, HttpServletRequest request) {
-    return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+  @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+  public ResponseEntity<ErrorResponse> handleTypeMismatch(
+      MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+    String message = "Invalid value '%s' for parameter '%s'".formatted(ex.getValue(), ex.getName());
+    return build(HttpStatus.BAD_REQUEST, message, request, List.of());
+  }
+
+  @ExceptionHandler(MissingServletRequestParameterException.class)
+  public ResponseEntity<ErrorResponse> handleMissingParameter(
+      MissingServletRequestParameterException ex, HttpServletRequest request) {
+    String message = "Missing required parameter '%s'".formatted(ex.getParameterName());
+    return build(HttpStatus.BAD_REQUEST, message, request, List.of());
+  }
+
+  @ExceptionHandler(MissingRequestHeaderException.class)
+  public ResponseEntity<ErrorResponse> handleMissingHeader(
+      MissingRequestHeaderException ex, HttpServletRequest request) {
+    String message = "Missing required header '%s'".formatted(ex.getHeaderName());
+    return build(HttpStatus.BAD_REQUEST, message, request, List.of());
+  }
+
+  @ExceptionHandler(PropertyReferenceException.class)
+  public ResponseEntity<ErrorResponse> handleUnknownProperty(
+      PropertyReferenceException ex, HttpServletRequest request) {
+    String message = "Unknown property '%s'".formatted(ex.getPropertyName());
+    return build(HttpStatus.BAD_REQUEST, message, request, List.of());
   }
 
   @ExceptionHandler(NotFoundException.class)
