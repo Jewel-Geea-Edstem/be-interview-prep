@@ -1,0 +1,3 @@
+app:
+  jwt:
+    secret: test-only-secret-not-for-production-0123456789
